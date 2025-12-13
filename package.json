@@ -1,0 +1,27 @@
+{
+  "name": "yamcs-effect",
+  "module": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "prepare": "effect-language-service patch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.62.1",
+    "@effect/platform-bun": "^0.86.0",
+    "@effect/vitest": "^0.27.0",
+    "@types/bun": "latest",
+    "prettier": "^3.7.4",
+    "prettier-plugin-jsdoc": "^1.8.0",
+    "prettier-plugin-organize-imports": "^4.3.0",
+    "vitest": "^4.0.15"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.93.8",
+    "effect": "^3.19.12"
+  }
+}
