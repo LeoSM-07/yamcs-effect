@@ -1,10 +1,11 @@
 import { Socket } from "@effect/platform";
-import { Cause, Effect, Mailbox, pipe, Schema, Scope, Stream } from "effect";
+import { Cause, Effect, Mailbox, pipe, Schema, Stream } from "effect";
 import { Client, Server } from "./schemas";
 
 export class YamcsSocket extends Effect.Service<YamcsSocket>()(
   "yamcs-effect/socket/YamcsSocket",
   {
+    accessors: true,
     scoped: Effect.gen(function* () {
       const socket = yield* Socket.Socket;
 
@@ -100,7 +101,7 @@ export class YamcsSocket extends Effect.Service<YamcsSocket>()(
       // Public API
       const subscribeTime = (
         options: typeof Client.SubscribeTimeRequest.Type,
-      ): Stream.Stream<typeof Server.TimeData.Type, Error, Scope.Scope> => {
+      ) => {
         return Stream.unwrapScoped(
           Effect.gen(function* () {
             const requestId = requestIdCounter++;

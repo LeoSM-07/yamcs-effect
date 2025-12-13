@@ -19,7 +19,7 @@ export namespace Server {
 
   export const TimeData = Schema.Struct({
     "@type": Schema.Literal("/google.protobuf.Timestamp"),
-    value: Schema.DateTimeUtc, // Parses ISO string to Date
+    value: Schema.DateFromString, // Parses ISO string to Date
   });
 
   export const Time = Schema.Struct({
