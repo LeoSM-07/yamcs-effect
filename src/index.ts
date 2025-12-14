@@ -1,17 +1,16 @@
-// import { BunSocket } from "@effect/platform-bun";
-// import { Effect, Layer, Logger, LogLevel, Stream } from "effect";
-// import { YamcsSocket } from "./socket";
-//
 // export const program = Effect.gen(function* () {
 //   yield* Effect.log("Running...");
 //   const yamcs = yield* YamcsSocket;
 //
 //   const stream = yield* yamcs
-//     .subscribeTime({
+//     .subscribePackets({
 //       instance: "mqtt-packets",
 //       processor: "realtime",
 //     })
-//     .pipe(Stream.tap(Effect.logInfo), Stream.runDrain);
+//     .pipe(
+//       Stream.tap((a) => Effect.logInfo(a)),
+//       Stream.runDrain,
+//     );
 // }).pipe(
 //   Effect.provide(
 //     Layer.merge(
@@ -20,10 +19,12 @@
 //           BunSocket.layerWebSocket("ws://localhost:8090/api/websocket"),
 //         ),
 //       ),
-//       Logger.minimumLogLevel(LogLevel.Info),
+//       Logger.minimumLogLevel(LogLevel.Debug),
 //     ),
 //   ),
 //   Effect.scoped,
 // );
+//
+// BunRuntime.runMain(program);
 
 export * from "./socket.ts";

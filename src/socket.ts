@@ -1,6 +1,6 @@
 import { Socket } from "@effect/platform";
 import { Cause, Effect, Mailbox, pipe, Schema, Stream } from "effect";
-import { Client, Server } from "./schemas";
+import { Client, Server } from "./messages";
 
 export class YamcsSocket extends Effect.Service<YamcsSocket>()(
   "yamcs-effect/socket/YamcsSocket",
@@ -64,7 +64,7 @@ export class YamcsSocket extends Effect.Service<YamcsSocket>()(
               if (mailbox) {
                 // Decode based on message type
                 const decoded = envelope.data;
-                yield* mailbox.offer(decoded.value);
+                yield* mailbox.offer(decoded);
               }
             }
           }),
@@ -98,29 +98,34 @@ export class YamcsSocket extends Effect.Service<YamcsSocket>()(
         }),
       );
 
-      // Public API
-      const subscribeTime = (
-        options: typeof Client.SubscribeTimeRequest.Type,
-      ) => {
+      // Generic subscription helper
+      const createSubscription = <
+        RequestOptions,
+        ResponseData extends Schema.Schema.Any,
+      >(
+        type: string,
+        options: RequestOptions,
+        responseSchema: ResponseData,
+      ): Stream.Stream<Schema.Schema.Type<ResponseData>, Error, never> => {
         return Stream.unwrapScoped(
           Effect.gen(function* () {
             const requestId = requestIdCounter++;
             const mailbox = yield* Mailbox.make<
-              typeof Server.TimeData.Type,
+              typeof responseSchema.Type,
               Error
             >();
 
             // Register as pending
-            pendingRequests.set(requestId, { mailbox, type: "time" });
+            pendingRequests.set(requestId, { mailbox, type });
 
             const message = JSON.stringify({
-              type: "time",
+              type,
               id: requestId,
               options,
             });
 
             yield* Effect.logDebug(
-              `Subscribing to time: request id ${requestId}`,
+              `Subscribing to ${type}: request id ${requestId}`,
               message,
             );
 
@@ -163,7 +168,16 @@ export class YamcsSocket extends Effect.Service<YamcsSocket>()(
         );
       };
 
-      return { subscribeTime } as const;
+      // Public API - thin wrappers around createSubscription
+      const subscribePackets = (
+        options: typeof Client.SubscribePacketsRequest.Type,
+      ) => createSubscription("packets", options, Server.Packets);
+
+      const subscribeTime = (
+        options: typeof Client.SubscribeTimeRequest.Type,
+      ) => createSubscription("time", options, Server.TimeData);
+
+      return { subscribeTime, subscribePackets } as const;
     }),
   },
 ) {}
