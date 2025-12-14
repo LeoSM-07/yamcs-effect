@@ -410,3 +410,33 @@ export const TmPacketData = Schema.Struct({
   link: Schema.String,
   size: Schema.NonNegativeInt,
 });
+
+// {
+//     "rawValue": {
+//         "type": "UINT32",
+//         "uint32Value": 3
+//     },
+//     "engValue": {
+//         "type": "ENUMERATED",
+//         "stringValue": "ENUM_VALUE_3",
+//         "sint64Value": "3"
+//     },
+//     "acquisitionTime": "2025-12-14T15:25:50.819Z",
+//     "generationTime": "2025-12-14T15:25:50.819Z",
+//     "acquisitionStatus": "ACQUIRED",
+//     "numericId": 19
+// }
+
+export const AcquisitionStatus = Schema.Literal(
+  "ACQUIRED",
+  "NOT_RECEIVED",
+  "INVALID",
+  "EXPIRED",
+);
+
+export const ParameterSubscriptionValue = Schema.Struct({
+  rawValue: Value,
+  engValue: Value,
+  acquisitionStatus: AcquisitionStatus,
+  numericId: Schema.NonNegativeInt,
+});

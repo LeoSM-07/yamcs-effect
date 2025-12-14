@@ -1,5 +1,11 @@
 import { Schema } from "effect";
-import { Instance, Processor, TmPacketData } from "./schemas";
+import {
+  Instance,
+  NamedObjectId,
+  ParameterSubscriptionValue,
+  Processor,
+  TmPacketData,
+} from "./schemas";
 
 const WebSocketCall = Schema.NonNegativeInt;
 
@@ -31,10 +37,22 @@ export namespace Server {
     value: Schema.DateFromString, // Parses ISO string to Date
   });
   export const Time = MessageFromData("time", TimeData);
+
+  export const ParameterData = Schema.Struct({
+    mapping: Schema.optional(
+      Schema.Record({
+        key: Schema.String,
+        value: NamedObjectId,
+      }),
+    ),
+    values: Schema.optional(Schema.Array(ParameterSubscriptionValue)),
+  });
+  export const Parameters = MessageFromData("parameters", ParameterData);
+
   export const Packets = MessageFromData("packets", TmPacketData);
 
   // Union of all messages
-  export const Message = Schema.Union(Reply, Time, Packets);
+  export const Message = Schema.Union(Reply, Time, Packets, Parameters);
 }
 
 export namespace Client {
@@ -119,6 +137,16 @@ export namespace Client {
     SubscribeCommandsRequest,
   );
 
+  export const SubscribeParameterssRequest = Schema.Struct({
+    instance: Instance,
+    processor: Processor,
+    id: Schema.Array(NamedObjectId),
+  });
+  export const Parameters = MessageFromRequest(
+    "parameters",
+    SubscribeCommandsRequest,
+  );
+
   export const Messages = Schema.Union(
     Cancel,
     State,
@@ -130,5 +158,6 @@ export namespace Client {
     Alarms,
     Events,
     Commands,
+    Parameters,
   );
 }

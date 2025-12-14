@@ -1,6 +1,7 @@
 import { Socket } from "@effect/platform";
-import { Cause, Effect, Mailbox, pipe, Schema, Stream } from "effect";
+import { Effect, Either, Mailbox, Option, pipe, Schema, Stream } from "effect";
 import { Client, Server } from "./messages";
+import type { NamedObjectId, ParameterSubscriptionValue } from "./schemas";
 
 export class YamcsSocket extends Effect.Service<YamcsSocket>()(
   "yamcs-effect/socket/YamcsSocket",
@@ -31,19 +32,21 @@ export class YamcsSocket extends Effect.Service<YamcsSocket>()(
           Effect.gen(function* () {
             const text =
               typeof data === "string" ? data : new TextDecoder().decode(data);
-
-            const envelope = yield* pipe(
+            const envelopeResult = yield* pipe(
               text,
               Schema.decodeUnknown(Schema.parseJson(Server.Message)),
-              Effect.tapErrorCause((cause) =>
-                Effect.logWarning(
-                  `Failed to decode message: ${Cause.pretty(cause)}`,
-                ),
-              ),
-              Effect.orElse(() =>
-                Effect.fail(new Error("Invalid message format")),
-              ),
+              Effect.either,
             );
+            // If decode failed, log and return early
+            if (Either.isLeft(envelopeResult)) {
+              yield* Effect.logWarning(
+                `Failed to decode message, skipping`,
+                envelopeResult.left,
+                text,
+              );
+              return; // Early return - skip this message
+            }
+            const envelope = envelopeResult.right;
 
             // Handle reply: move from pending → active
             if (envelope.type == "reply") {
@@ -168,7 +171,7 @@ export class YamcsSocket extends Effect.Service<YamcsSocket>()(
         );
       };
 
-      // Public API - thin wrappers around createSubscription
+      // Public API
       const subscribePackets = (
         options: typeof Client.SubscribePacketsRequest.Type,
       ) => createSubscription("packets", options, Server.Packets);
@@ -177,7 +180,60 @@ export class YamcsSocket extends Effect.Service<YamcsSocket>()(
         options: typeof Client.SubscribeTimeRequest.Type,
       ) => createSubscription("time", options, Server.TimeData);
 
-      return { subscribeTime, subscribePackets } as const;
+      const subscribeParameters = (
+        options: typeof Client.SubscribeParameterssRequest.Type,
+      ) => {
+        const subscription = createSubscription(
+          "parameters",
+          options,
+          Server.ParameterData,
+        );
+
+        return subscription.pipe(
+          Stream.mapAccum(
+            // State: current mapping (if any)
+            Option.none<Record<number, typeof NamedObjectId.Type>>(),
+            (currentMapping, message) => {
+              if (message.mapping !== undefined) {
+                return [Option.some(message.mapping), Option.none()];
+              }
+
+              if (
+                message.values !== undefined &&
+                Option.isSome(currentMapping)
+              ) {
+                const transformed = transformValuesToMap(
+                  message.values,
+                  currentMapping.value,
+                );
+
+                return [currentMapping, Option.some(transformed)];
+              }
+
+              return [currentMapping, Option.none()];
+            },
+          ),
+          Stream.filterMap((x) => x),
+        );
+      };
+
+      return { subscribeTime, subscribePackets, subscribeParameters } as const;
     }),
   },
 ) {}
+
+function transformValuesToMap(
+  values: ReadonlyArray<typeof ParameterSubscriptionValue.Type>,
+  mapping: Record<number, typeof NamedObjectId.Type>,
+) {
+  const result: Record<string, typeof ParameterSubscriptionValue.Type> = {};
+
+  for (const value of values) {
+    const nameInfo = mapping[value.numericId];
+    if (nameInfo !== undefined) {
+      result[nameInfo.name] = value;
+    }
+  }
+
+  return result;
+}
